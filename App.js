@@ -3,7 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Appbar, Avatar, Searchbar, Button, Portal, Provider, TextInput, Text, Dialog, Drawer, Checkbox } from 'react-native-paper';
+import { Appbar, Avatar, Searchbar, Button, Portal, Provider, TextInput, Text, Dialog, Checkbox, Card } from 'react-native-paper';
 import 'react-native-gesture-handler';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
@@ -20,7 +20,10 @@ function NowScreen({ navigation }) {
   const [inputVal, setInputVal] = useState('test');
   const [isDialogVisible, setIsDialogVisible] = useState(false);
 
-  const [checked, setChecked] = React.useState(false);
+  const [inputValEdit, setInputValEdit] = useState('test');
+  const [isDialogVisibleEdit, setIsDialogVisibleEdit] = useState(false);
+
+  const [isDialogVisibleDelete, setIsDialogVisibleDelete] = useState(false);
 
   const [date, setDate] = useState(new Date());
   const [mode, setMode] = useState('date');
@@ -30,19 +33,19 @@ function NowScreen({ navigation }) {
     setShow(false);
     setDate(currentDate);
   };
-
   const showMode = (currentMode) => {
     setShow(true);
     setMode(currentMode);
   };
-
   const showDatepicker = () => {
     showMode('date');
   };
-
   const showTimepicker = () => {
     showMode('time');
   };
+
+  const [checked, setChecked] = React.useState(false);
+  const checkbox = props => <Checkbox  status={checked ? 'checked' : 'unchecked'} onPress={() => { setChecked(!checked); }} theme={theme} />
 
   return (
       <Provider>
@@ -50,9 +53,15 @@ function NowScreen({ navigation }) {
           <Searchbar placeholder="Search" onChangeText={onChangeSearch} value={searchQuery} />
         </View>
         <View style={styles.container}>
-          <Drawer.Item style={{ backgroundColor: '#fff' }} icon="star" label="First Item" />
-          <Drawer.Item style={{ backgroundColor: '#fff' }} icon="star" label="First Item" />
+          <Card>
+            <Card.Title title="กินชาบู" subtitle="28/3/2022 11.59" left={checkbox}  />
+            <Card.Actions>
+              <Button theme={theme} onPress={() => setIsDialogVisibleEdit(true)}>Edit</Button>
+              <Button color='red' onPress={() => setIsDialogVisibleDelete(true)}>Delete</Button>
+            </Card.Actions>
+          </Card>
         </View>
+
         
         <Portal>
           <Dialog visible={isDialogVisible} onDismiss={() => setIsDialogVisible(false)}>
@@ -80,6 +89,41 @@ function NowScreen({ navigation }) {
           <View style={styles.addButton} >
             <Button color='#ff6347' icon="plus" mode="contained" onPress={() => setIsDialogVisible(true)}> Add New To Do </Button>
           </View>
+        </Portal>
+
+        <Portal>
+          <Dialog visible={isDialogVisibleDelete} onDismiss={() => setIsDialogVisibleDelete(false)}>
+            <Dialog.Title>Are you sure delete?</Dialog.Title>
+            <Dialog.Actions>
+              <Button onPress={() => setIsDialogVisibleDelete(false) } theme={theme} >Cancel</Button>
+              <Button onPress={() => setIsDialogVisibleDelete(false)} color='red' >Delete</Button>
+            </Dialog.Actions>
+          </Dialog>
+        </Portal>
+
+        <Portal>
+          <Dialog visible={isDialogVisibleEdit} onDismiss={() => setIsDialogVisibleEdit(false)}>
+            <Dialog.Title>EDIT TO DO</Dialog.Title>
+            <Dialog.Content>
+              <TextInput label='Title' value={inputValEdit} onChangeText={text => setInputValEdit(text)} mode="outlined" theme={theme} />
+            </Dialog.Content>
+            <Dialog.Content>
+              <TextInput label='Detail' value={inputValEdit} onChangeText={text => setInputValEdit(text)} mode="outlined" theme={theme} />
+            </Dialog.Content>
+            <Dialog.Content>
+              <Button onPress={showDatepicker} mode='outlined' color='#ff6347'> Pick Due Date </Button>
+            </Dialog.Content>
+            <Dialog.Content>
+              <Button onPress={showTimepicker} mode='outlined'color='#ff6347'> Pick Due Time </Button>
+            </Dialog.Content>
+            <Dialog.Content>
+            <Text style={[styles.todotext,{textAlign: 'center',marginTop: 5, marginBottom: 5,}]}>Selected: {date.toLocaleString()}</Text>
+            </Dialog.Content>
+            <Dialog.Actions>
+              <Button onPress={() => setIsDialogVisibleEdit(false)} theme={theme}>Save Change</Button>
+            </Dialog.Actions>
+              {show && ( <DateTimePicker testID="dateTimePicker" value={date} mode={mode} is24Hour={true} onChange={onChange} /> )}
+          </Dialog>
         </Portal>
       </Provider>
       
@@ -144,8 +188,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     margin: 15,
-  
-
   },
   mainbox: {
     textAlign:'center',
