@@ -1,11 +1,14 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { View, StyleSheet, Image, TouchableOpacity, ScrollView, RefreshControl} from 'react-native';
+import { NavigationContainer, useScrollToTop } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Appbar, Avatar, Searchbar, Button, Portal, Provider, TextInput, Text, Dialog, Checkbox, Card } from 'react-native-paper';
+import { Appbar, Avatar, Searchbar, Button, Portal, Provider, TextInput, Text, Dialog, Checkbox, Card, Paragraph } from 'react-native-paper';
 import 'react-native-gesture-handler';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import TodoListDataService from "./services/todo.service"
+
+//const [, forceUpdate] = React.useReducer(x => x + 1, 0);
 
 const theme = {
   colors: {
@@ -13,18 +16,52 @@ const theme = {
   },
 };
 
+const wait = (timeout) => {
+  return new Promise(resolve => setTimeout(resolve, timeout));
+}
+
+
 function NowScreen({ navigation }) {
-  const [searchQuery, setSearchQuery] = React.useState('');
-  const onChangeSearch = query => setSearchQuery(query);
 
-  const [inputVal, setInputVal] = useState('test');
-  const [isDialogVisible, setIsDialogVisible] = useState(false);
+  const [, forceUpdate] = React.useReducer(x => x + 1, 0);
 
-  const [inputValEdit, setInputValEdit] = useState('test');
-  const [isDialogVisibleEdit, setIsDialogVisibleEdit] = useState(false);
+  //////////Initial//////////
 
-  const [isDialogVisibleDelete, setIsDialogVisibleDelete] = useState(false);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    retrieveTodo();
+    wait(2000).then(() => setRefreshing(false));
+  }, []);
 
+  const [DataShow, setDataShow] = useState([]);
+
+  const retrieveTodo = () =>{
+    console.log('========retrieveTodo=======')
+    TodoListDataService.getAll()
+    .then(response =>{
+        if(response.data){
+          setTodoSearch(response.data);
+          setDataShow(response.data);
+          console.log(DataShow.length);
+          setNotFound(false);
+          setSearchQuery();
+          //forceUpdate();
+        } else {
+          setNotFound(true);
+        }
+    })
+    .catch(e =>{
+        console.log(e);
+    })
+  }
+
+  React.useEffect(()=>{
+    console.log('=======useEffect======')
+    retrieveTodo();
+  },[])
+
+  //////////DatetimePicker//////////
   const [date, setDate] = useState(new Date());
   const [mode, setMode] = useState('date');
   const [show, setShow] = useState(false);
@@ -44,33 +81,200 @@ function NowScreen({ navigation }) {
     showMode('time');
   };
 
-  const [checked, setChecked] = React.useState(false);
-  const checkbox = props => <Checkbox  status={checked ? 'checked' : 'unchecked'} onPress={() => { setChecked(!checked); }} theme={theme} />
+  //////////Searchbar//////////
+  const [notFound, setNotFound] = useState(false);
+  const [searchQuery, setSearchQuery] = React.useState('');
+
+  const [todoSearch,setTodoSearch] = useState([]);
+
+  const onChangeSearch = query => {
+
+    const searchData = todoSearch.filter((todo) => {
+      const todo_data = `${todo.title.toUpperCase()})`;
+      const text_data = query.toUpperCase();
+      return todo_data.indexOf(text_data) > -1;
+    })
+    setSearchQuery(query)
+    console.log(searchData)
+    setDataShow(searchData)
+
+    if (DataShow.length == 0) {
+      setNotFound(true);
+    } else {
+      setNotFound(false);
+    }
+  }
+
+  //////////AddTodo//////////
+  const [titleAdd, setTitleAdd] = useState();
+  const [descAdd, setDescAdd] = useState();
+  const [isDialogVisible, setIsDialogVisible] = useState(false);
+
+  const handleAddTodo = (date) => {
+    console.log(titleAdd);
+    var data = 
+    {
+      title: titleAdd,
+      description: descAdd,
+      published: false,
+      priority: false,
+      duedate: date
+    }
+    setTitleAdd(null);
+    setDescAdd(null);
+    setDate(new Date(Date.now()))
+
+    TodoListDataService.create(data)
+        .then(response => {
+            console.log('Add',response.data);
+            retrieveTodo();
+        })
+        .catch(e => {
+            console.log(e);
+        });
+  }
+
+  //////////EditTodo//////////
+  const [titleEdit, setTitleEdit] = useState();
+  const [descEdit, setDescEdit] = useState();
+  const [todoEdit, setTodoEdit] = useState();
+  const [isDialogVisibleEdit, setIsDialogVisibleEdit] = useState(false);
+
+  const handleEdit = (date) => {
+    var data = 
+    {
+      title: titleEdit,
+      description: descEdit,
+      published: todoEdit.published,
+      priority: todoEdit.priority,
+      duedate: date
+    }
+    
+    TodoListDataService.update(todoEdit.id,data)
+      .then(response => {
+          console.log('Edit', response.data);
+          setTitleEdit(null);
+          setDescEdit(null);
+          setTodoEdit(null);
+          retrieveTodo();
+      })
+      .catch(e => {
+          console.log(e);
+      });
+  }
+
+  //////////DeleteTodo//////////
+  const [todoDelete, setTodoDelete] = useState();
+  const [isDialogVisibleDelete, setIsDialogVisibleDelete] = useState(false);
+
+  const handleDelete = (todo) => {
+    TodoListDataService.delete(todo.id)
+    .then(response => {
+        console.log('Delete',response.data);
+        setTodoDelete(null);
+        retrieveTodo();
+    })
+    .catch(e => {
+        console.log(e);
+    });
+  }
+
+  //////////ViewTodo//////////
+  const [isDialogVisibleView, setIsDialogVisibleView] = useState(false);
+  const [titleView, setTitleView] = useState()
+  const [descView, setDescView] = useState()
+
+  //////////CheckCompleteTodo//////////
+
+  const checkbox = (todo) => 
+  <Checkbox  status={todo.published ? 'checked' : 'unchecked'} onPress={() => [handleComplete(todo)]} color='#2196f5' />
+
+  const handleComplete = (todo) => {
+    var data = 
+    {
+      title: todo.title,
+      description: todo.description,
+      published: !todo.published,
+      priority: todo.priority,
+      duedate: todo.duedate
+    }
+    TodoListDataService.update(todo.id,data)
+      .then(response => {
+          console.log('click Completed',response.data);
+          //forceUpdate();
+          retrieveTodo();
+      })
+      .catch(e => {
+          console.log(e);
+      });
+  }
+
+  //////////StarTodo//////////
+  const star = (todo) => 
+  <TouchableOpacity style={[{marginRight: 20,justifyContent:'center'}]} onPress={() => [handleStarClick(todo)]}>
+  {todo.priority ?
+    <Image style={{height:27,width:27}} source={require('./pictures/goldstar.png')}></Image>
+    : <Image style={{height:27,width:27}} source={require('./pictures/transstar.png')}></Image>}
+  </TouchableOpacity>
+
+  const handleStarClick = (todo) => {
+    var data = 
+    {
+      title: todo.title,
+      description: todo.description,
+      published: todo.published,
+      priority: !todo.priority,
+      duedate: todo.duedate
+    }
+    TodoListDataService.update(todo.id,data)
+      .then(response => {
+          console.log('click Star',response.data);
+          retrieveTodo();
+      })
+      .catch(e => {
+          console.log(e);
+      });
+  }
 
   return (
       <Provider>
         <View style={styles.mainbox}>
           <Searchbar placeholder="Search" onChangeText={onChangeSearch} value={searchQuery} />
         </View>
-        <View style={styles.container}>
-          <Card>
-            <Card.Title title="กินชาบู" subtitle="28/3/2022 11.59" left={checkbox}  />
-            <Card.Actions>
-              <Button theme={theme} onPress={() => setIsDialogVisibleEdit(true)}>Edit</Button>
-              <Button color='red' onPress={() => setIsDialogVisibleDelete(true)}>Delete</Button>
-            </Card.Actions>
-          </Card>
-        </View>
 
-        
+        <ScrollView style={{marginBottom: 50}} refreshControl={<RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />}>
+          {DataShow.map((todo, index) => {
+            return (
+              <View key ={index} style={styles.container}>
+                <Card>
+                  <Card.Title title={todo.title} subtitle={todo.duedate} left={() => checkbox(todo)}  right={() => star(todo)}/>
+                  <Card.Actions>
+                    <Button theme={theme} onPress={() => [setTitleView(todo.title),setDescView(todo.description),setIsDialogVisibleView(true)]}>View Details</Button>
+                    <Button color='green' onPress={() => [setTitleEdit(todo.title),setDescEdit(todo.description),setTodoEdit(todo),setIsDialogVisibleEdit(true)]}>Edit</Button>
+                    <Button color='red' onPress={() => [setTodoDelete(todo),setIsDialogVisibleDelete(true)]}>Delete</Button>
+                  </Card.Actions>
+                </Card>   
+              </View>
+            );
+          })}
+          {notFound == true ?
+                <View>
+                  <Text style={{textAlign: 'center',}}>Not found</Text>
+                </View> 
+                : null}
+        </ScrollView>
+
         <Portal>
           <Dialog visible={isDialogVisible} onDismiss={() => setIsDialogVisible(false)}>
             <Dialog.Title>ADD NEW TO DO</Dialog.Title>
             <Dialog.Content>
-              <TextInput label='Title' value={inputVal} onChangeText={text => setInputVal(text)} mode="outlined" theme={theme} />
+              <TextInput label='Title' placeholder='Title...' onChangeText={text => setTitleAdd(text)} mode="outlined" theme={theme} />
             </Dialog.Content>
             <Dialog.Content>
-              <TextInput label='Detail' value={inputVal} onChangeText={text => setInputVal(text)} mode="outlined" theme={theme} />
+              <TextInput label='Detail' placeholder='Description...' onChangeText={text => setDescAdd(text)} mode="outlined" theme={theme} />
             </Dialog.Content>
             <Dialog.Content>
               <Button onPress={showDatepicker} mode='outlined' color='#ff6347'> Pick Due Date </Button>
@@ -81,22 +285,33 @@ function NowScreen({ navigation }) {
             <Dialog.Content>
             <Text style={[styles.todotext,{textAlign: 'center',marginTop: 5, marginBottom: 5,}]}>Selected: {date.toLocaleString()}</Text>
             </Dialog.Content>
+
             <Dialog.Actions>
-              <Button onPress={() => setIsDialogVisible(false)} theme={theme}>ADD</Button>
+              <Button onPress={() => [handleAddTodo(date.toLocaleString()),setIsDialogVisible(false)]} theme={theme}>ADD</Button>
             </Dialog.Actions>
+
               {show && ( <DateTimePicker testID="dateTimePicker" value={date} mode={mode} is24Hour={true} onChange={onChange} /> )}
           </Dialog>
           <View style={styles.addButton} >
-            <Button color='#ff6347' icon="plus" mode="contained" onPress={() => setIsDialogVisible(true)}> Add New To Do </Button>
+            <Button color='#2196f5' icon="plus" mode="contained" onPress={() => setIsDialogVisible(true)}> Add New To Do </Button>
           </View>
+        </Portal>
+
+        <Portal>
+          <Dialog visible={isDialogVisibleView} onDismiss={() => [setTitleView(),setDescView(),setIsDialogVisibleView(false)]}>
+            <Dialog.Title>{titleView}</Dialog.Title>
+            <Dialog.Content>
+              <Paragraph>{descView}</Paragraph>
+            </Dialog.Content>
+          </Dialog>
         </Portal>
 
         <Portal>
           <Dialog visible={isDialogVisibleDelete} onDismiss={() => setIsDialogVisibleDelete(false)}>
             <Dialog.Title>Are you sure delete?</Dialog.Title>
             <Dialog.Actions>
-              <Button onPress={() => setIsDialogVisibleDelete(false) } theme={theme} >Cancel</Button>
-              <Button onPress={() => setIsDialogVisibleDelete(false)} color='red' >Delete</Button>
+              <Button onPress={() => [setIsDialogVisibleDelete(false),setTodoDelete(null)]} theme={theme} >Cancel</Button>
+              <Button onPress={() => [handleDelete(todoDelete),setIsDialogVisibleDelete(false),setTodoDelete(null)]} color='red' >Delete</Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>
@@ -105,10 +320,10 @@ function NowScreen({ navigation }) {
           <Dialog visible={isDialogVisibleEdit} onDismiss={() => setIsDialogVisibleEdit(false)}>
             <Dialog.Title>EDIT TO DO</Dialog.Title>
             <Dialog.Content>
-              <TextInput label='Title' value={inputValEdit} onChangeText={text => setInputValEdit(text)} mode="outlined" theme={theme} />
+              <TextInput label='Title' value={titleEdit} onChangeText={text => setTitleEdit(text)} mode="outlined" theme={theme} />
             </Dialog.Content>
             <Dialog.Content>
-              <TextInput label='Detail' value={inputValEdit} onChangeText={text => setInputValEdit(text)} mode="outlined" theme={theme} />
+              <TextInput label='Detail' value={descEdit} onChangeText={text => setDescEdit(text)} mode="outlined" theme={theme} />
             </Dialog.Content>
             <Dialog.Content>
               <Button onPress={showDatepicker} mode='outlined' color='#ff6347'> Pick Due Date </Button>
@@ -120,7 +335,7 @@ function NowScreen({ navigation }) {
             <Text style={[styles.todotext,{textAlign: 'center',marginTop: 5, marginBottom: 5,}]}>Selected: {date.toLocaleString()}</Text>
             </Dialog.Content>
             <Dialog.Actions>
-              <Button onPress={() => setIsDialogVisibleEdit(false)} theme={theme}>Save Change</Button>
+              <Button onPress={() => [handleEdit(date.toLocaleString()),setIsDialogVisibleEdit(false)]} theme={theme}>Save Change</Button>
             </Dialog.Actions>
               {show && ( <DateTimePicker testID="dateTimePicker" value={date} mode={mode} is24Hour={true} onChange={onChange} /> )}
           </Dialog>
@@ -132,17 +347,240 @@ function NowScreen({ navigation }) {
 }
 
 function CompletedScreen({ navigation }) {
-  return (
-    <Provider>
-      <Text>dadweda</Text>
-    </Provider>
-  );
-}
+  
+  const [, forceUpdate] = React.useReducer(x => x + 1, 0);
+ 
+  //////////Initial//////////
 
-function ExpireScreen({ navigation }) {
+  const [refreshing, setRefreshing] = React.useState(false);
+  const onRefresh = React.useCallback(() => {
+    setRefreshing(true);
+    retrieveTodo();
+    wait(2000).then(() => setRefreshing(false));
+  }, []);
+
+  const [notFound, setNotFound] = useState([]);
+  const [DataShow, setDataShow] = useState([]);
+
+  const retrieveTodo = () => {
+    console.log('========retrieveTodo=======')
+    TodoListDataService.getAll()
+      .then(response =>{
+          const completedTodo = response.data.filter((todo) => todo.published == 1);
+          setDataShow(completedTodo);
+          if(completedTodo.length == 0){
+            setNotFound(true);
+          } else {
+            setNotFound(false);
+          }
+          console.log(DataShow.length);
+          //forceUpdate();
+      })
+      .catch(e =>{
+          console.log(e);
+      })
+    } 
+
+  React.useEffect(()=>{
+    console.log('=======useEffectComplete======')
+    retrieveTodo();
+    //forceUpdate();
+  },[])
+
+  //////////DatetimePicker//////////
+  const [date, setDate] = useState(new Date());
+  const [mode, setMode] = useState('date');
+  const [show, setShow] = useState(false);
+  const onChange = (event, selectedDate) => {
+    const currentDate = selectedDate;
+    setShow(false);
+    setDate(currentDate);
+  };
+  const showMode = (currentMode) => {
+    setShow(true);
+    setMode(currentMode);
+  };
+  const showDatepicker = () => {
+    showMode('date');
+  };
+  const showTimepicker = () => {
+    showMode('time');
+  };
+
+  //////////EditTodo//////////
+  //const [inputValEdit, setInputValEdit] = useState();
+  const [titleEdit, setTitleEdit] = useState();
+  const [descEdit, setDescEdit] = useState();
+  const [todoEdit, setTodoEdit] = useState();
+  const [isDialogVisibleEdit, setIsDialogVisibleEdit] = useState(false);
+
+  const handleEdit = (date) => {
+    var data = 
+    {
+      title: titleEdit,
+      description: descEdit,
+      published: todoEdit.published,
+      priority: todoEdit.priority,
+      duedate: date
+    }
+    
+    TodoListDataService.update(todoEdit.id,data)
+      .then(response => {
+          console.log('Edit', response.data);
+          setTitleEdit(null);
+          setDescEdit(null);
+          setTodoEdit(null);
+          retrieveTodo();
+      })
+      .catch(e => {
+          console.log(e);
+      });
+  }
+
+  //////////DeleteTodo//////////
+  const [todoDelete, setTodoDelete] = useState();
+  const [isDialogVisibleDelete, setIsDialogVisibleDelete] = useState(false);
+
+  const handleDelete = (todo) => {
+    TodoListDataService.delete(todo.id)
+    .then(response => {
+        console.log('Delete',response.data);
+        setTodoDelete(null);
+        retrieveTodo();
+    })
+    .catch(e => {
+        console.log(e);
+    });
+  }
+
+  //////////ViewTodo//////////
+  const [isDialogVisibleView, setIsDialogVisibleView] = useState(false);
+  const [titleView, setTitleView] = useState()
+  const [descView, setDescView] = useState()
+
+  //////////CheckCompleteTodo//////////
+
+  const checkbox = (todo) => 
+  <Checkbox  status={todo.published ? 'checked' : 'unchecked'} onPress={() => [handleComplete(todo)]} color='#2196f5' />
+
+  const handleComplete = (todo) => {
+    var data = 
+    {
+      title: todo.title,
+      description: todo.description,
+      published: !todo.published,
+      priority: todo.priority,
+      duedate: todo.duedate
+    }
+    TodoListDataService.update(todo.id,data)
+      .then(response => {
+          console.log('click Completed',response.data);
+          //forceUpdate();
+          retrieveTodo();
+      })
+      .catch(e => {
+          console.log(e);
+      });
+  }
+
+  //////////StarTodo//////////
+  const star = (todo) => 
+  <TouchableOpacity style={[{marginRight: 20,justifyContent:'center'}]} onPress={() => [handleStarClick(todo)]}>
+  {todo.priority ?
+    <Image style={{height:27,width:27}} source={require('./pictures/goldstar.png')}></Image>
+    : <Image style={{height:27,width:27}} source={require('./pictures/transstar.png')}></Image>}
+  </TouchableOpacity>
+
+  const handleStarClick = (todo) => {
+    var data = 
+    {
+      title: todo.title,
+      description: todo.description,
+      published: todo.published,
+      priority: !todo.priority,
+      duedate: todo.duedate
+    }
+    TodoListDataService.update(todo.id,data)
+      .then(response => {
+          console.log('click Star',response.data);
+          retrieveTodo();
+      })
+      .catch(e => {
+          console.log(e);
+      });
+  }
+
   return (
     <Provider>
-      <Text>dadweda</Text>
+
+      <ScrollView style={{marginBottom: 50}} refreshControl={<RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+          />}>
+        {DataShow.map((todo, index) => {
+          return (
+            <View key ={index} style={styles.container}>
+              <Card>
+                <Card.Title title={todo.title} subtitle={todo.duedate} left={() => checkbox(todo)}  right={() => star(todo)}/>
+                <Card.Actions>
+                  <Button theme={theme} onPress={() => [setTitleView(todo.title),setDescView(todo.description),setIsDialogVisibleView(true)]}>View Details</Button>
+                  <Button color='green' onPress={() => [setTitleEdit(todo.title),setDescEdit(todo.description),setTodoEdit(todo),setIsDialogVisibleEdit(true)]}>Edit</Button>
+                  <Button color='red' onPress={() => [setTodoDelete(todo),setIsDialogVisibleDelete(true)]}>Delete</Button>
+                </Card.Actions>
+              </Card>   
+            </View>
+          );
+        })}
+        {notFound == true ?
+              <View>
+                <Text style={{textAlign: 'center',}}>Not found</Text>
+              </View> 
+              : null}
+      </ScrollView>
+
+      <Portal>
+        <Dialog visible={isDialogVisibleView} onDismiss={() => [setTitleView(),setDescView(),setIsDialogVisibleView(false)]}>
+          <Dialog.Title>{titleView}</Dialog.Title>
+          <Dialog.Content>
+            <Paragraph>{descView}</Paragraph>
+          </Dialog.Content>
+        </Dialog>
+      </Portal>
+
+      <Portal>
+        <Dialog visible={isDialogVisibleDelete} onDismiss={() => setIsDialogVisibleDelete(false)}>
+          <Dialog.Title>Are you sure delete?</Dialog.Title>
+          <Dialog.Actions>
+            <Button onPress={() => [setIsDialogVisibleDelete(false),setTodoDelete(null)]} theme={theme} >Cancel</Button>
+            <Button onPress={() => [handleDelete(todoDelete),setIsDialogVisibleDelete(false),setTodoDelete(null)]} color='red' >Delete</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
+      <Portal>
+        <Dialog visible={isDialogVisibleEdit} onDismiss={() => setIsDialogVisibleEdit(false)}>
+          <Dialog.Title>EDIT TO DO</Dialog.Title>
+          <Dialog.Content>
+            <TextInput label='Title' value={titleEdit} onChangeText={text => setTitleEdit(text)} mode="outlined" theme={theme} />
+          </Dialog.Content>
+          <Dialog.Content>
+            <TextInput label='Detail' value={descEdit} onChangeText={text => setDescEdit(text)} mode="outlined" theme={theme} />
+          </Dialog.Content>
+          <Dialog.Content>
+            <Button onPress={showDatepicker} mode='outlined' color='#ff6347'> Pick Due Date </Button>
+          </Dialog.Content>
+          <Dialog.Content>
+            <Button onPress={showTimepicker} mode='outlined'color='#ff6347'> Pick Due Time </Button>
+          </Dialog.Content>
+          <Dialog.Content>
+          <Text style={[styles.todotext,{textAlign: 'center',marginTop: 5, marginBottom: 5,}]}>Selected: {date.toLocaleString()}</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => [handleEdit(date.toLocaleString()),setIsDialogVisibleEdit(false)]} theme={theme}>Save Change</Button>
+          </Dialog.Actions>
+            {show && ( <DateTimePicker testID="dateTimePicker" value={date} mode={mode} is24Hour={true} onChange={onChange} /> )}
+        </Dialog>
+      </Portal>
     </Provider>
   );
 }
@@ -168,18 +606,15 @@ export default function App() {
               iconName = focused ? 'alarm' : 'alarm';
             } else if (route.name === 'Completed') {
               iconName = focused ? 'checkmark' : 'checkmark';
-            } else if (route.name === 'Expire') {
-              iconName = focused ? 'close' : 'close';
-            }
+            } 
             return <Ionicons name={iconName} size={size} color={color} />;
           },
-          tabBarActiveTintColor: 'tomato',
+          tabBarActiveTintColor: '#2196f5',
           tabBarInactiveTintColor: 'gray',
           header: CustomNavigationBar,
         })}>
         <Tab.Screen name="Now" component={NowScreen} />
-        <Tab.Screen name="Completed" component={CompletedScreen} />
-        <Tab.Screen name="Expire" component={ExpireScreen} />
+        <Tab.Screen name="Completed" component={CompletedScreen}/>
       </Tab.Navigator>
     </NavigationContainer>
   );
