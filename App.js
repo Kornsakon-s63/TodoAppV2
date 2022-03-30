@@ -187,7 +187,7 @@ function NowScreen({ navigation }) {
   //////////CheckCompleteTodo//////////
 
   const checkbox = (todo) => 
-  <Checkbox  status={todo.published ? 'checked' : 'unchecked'} onPress={() => [handleComplete(todo)]} color='#2196f5' />
+  <Checkbox accessibilityLabel='Checkbox'  status={todo.published ? 'checked' : 'unchecked'} onPress={() => [handleComplete(todo)]} color='#2196f5' />
 
   const handleComplete = (todo) => {
     var data = 
@@ -211,10 +211,10 @@ function NowScreen({ navigation }) {
 
   //////////StarTodo//////////
   const star = (todo) => 
-  <TouchableOpacity style={[{marginRight: 20,justifyContent:'center'}]} onPress={() => [handleStarClick(todo)]}>
+  <TouchableOpacity accessibilityLabel='Star' style={[{marginRight: 20,justifyContent:'center'}]} onPress={() => [handleStarClick(todo)]}>
   {todo.priority ?
-    <Image style={{height:27,width:27}} source={require('./pictures/goldstar.png')}></Image>
-    : <Image style={{height:27,width:27}} source={require('./pictures/transstar.png')}></Image>}
+    <Image accessibilityLabel='truestar' style={{height:27,width:27}} source={require('./pictures/goldstar.png')}></Image>
+    : <Image accessibilityLabel='falsestar' style={{height:27,width:27}} source={require('./pictures/transstar.png')}></Image>}
   </TouchableOpacity>
 
   const handleStarClick = (todo) => {
@@ -239,7 +239,7 @@ function NowScreen({ navigation }) {
   return (
       <Provider>
         <View style={styles.mainbox}>
-          <Searchbar placeholder="Search" onChangeText={onChangeSearch} value={searchQuery} />
+          <Searchbar accessibilityLabel='Search' placeholder="Search" onChangeText={onChangeSearch} value={searchQuery} />
         </View>
 
         <ScrollView style={{marginBottom: 50}} refreshControl={<RefreshControl
@@ -248,13 +248,13 @@ function NowScreen({ navigation }) {
           />}>
           {DataShow.map((todo, index) => {
             return (
-              <View key ={index} style={styles.container}>
+              <View key ={index} style={styles.container} accessibilityLabel='Todo'>
                 <Card>
-                  <Card.Title title={todo.title} subtitle={todo.duedate} left={() => checkbox(todo)}  right={() => star(todo)}/>
+                  <Card.Title  title={todo.title} subtitle={todo.duedate} left={() => checkbox(todo)}  right={() => star(todo)}/>
                   <Card.Actions>
-                    <Button theme={theme} onPress={() => [setTitleView(todo.title),setDescView(todo.description),setIsDialogVisibleView(true)]}>View Details</Button>
-                    <Button color='green' onPress={() => [setTitleEdit(todo.title),setDescEdit(todo.description),setTodoEdit(todo),setIsDialogVisibleEdit(true)]}>Edit</Button>
-                    <Button color='red' onPress={() => [setTodoDelete(todo),setIsDialogVisibleDelete(true)]}>Delete</Button>
+                    <Button accessibilityLabel='Detail' theme={theme} onPress={() => [setTitleView(todo.title),setDescView(todo.description),setIsDialogVisibleView(true)]}>View Details</Button>
+                    <Button accessibilityLabel='Edit' color='green' onPress={() => [setTitleEdit(todo.title),setDescEdit(todo.description),setTodoEdit(todo),setIsDialogVisibleEdit(true)]}>Edit</Button>
+                    <Button accessibilityLabel='Delete' color='red' onPress={() => [setTodoDelete(todo),setIsDialogVisibleDelete(true)]}>Delete</Button>
                   </Card.Actions>
                 </Card>   
               </View>
@@ -271,29 +271,29 @@ function NowScreen({ navigation }) {
           <Dialog visible={isDialogVisible} onDismiss={() => setIsDialogVisible(false)}>
             <Dialog.Title>ADD NEW TO DO</Dialog.Title>
             <Dialog.Content>
-              <TextInput label='Title' placeholder='Title...' onChangeText={text => setTitleAdd(text)} mode="outlined" theme={theme} />
+              <TextInput accessibilityLabel='AddTitle' label='Title' placeholder='Title...' onChangeText={text => setTitleAdd(text)} mode="outlined" theme={theme} />
             </Dialog.Content>
             <Dialog.Content>
-              <TextInput label='Detail' placeholder='Description...' onChangeText={text => setDescAdd(text)} mode="outlined" theme={theme} />
+              <TextInput accessibilityLabel='AddDesc' label='Detail' placeholder='Description...' onChangeText={text => setDescAdd(text)} mode="outlined" theme={theme} />
             </Dialog.Content>
             <Dialog.Content>
-              <Button onPress={showDatepicker} mode='outlined' color='#ff6347'> Pick Due Date </Button>
+              <Button accessibilityLabel='AddDate' onPress={showDatepicker} mode='outlined' color='#ff6347'> Pick Due Date </Button>
             </Dialog.Content>
             <Dialog.Content>
-              <Button onPress={showTimepicker} mode='outlined'color='#ff6347'> Pick Due Time </Button>
+              <Button accessibilityLabel='AddTime' onPress={showTimepicker} mode='outlined'color='#ff6347'> Pick Due Time </Button>
             </Dialog.Content>
             <Dialog.Content>
             <Text style={[styles.todotext,{textAlign: 'center',marginTop: 5, marginBottom: 5,}]}>Selected: {date.toLocaleString()}</Text>
             </Dialog.Content>
 
             <Dialog.Actions>
-              <Button onPress={() => [handleAddTodo(date.toLocaleString()),setIsDialogVisible(false)]} theme={theme}>ADD</Button>
+              <Button accessibilityLabel='AddSubmit' onPress={() => [handleAddTodo(date.toLocaleString()),setIsDialogVisible(false)]} theme={theme}>ADD</Button>
             </Dialog.Actions>
 
               {show && ( <DateTimePicker testID="dateTimePicker" value={date} mode={mode} is24Hour={true} onChange={onChange} /> )}
           </Dialog>
           <View style={styles.addButton} >
-            <Button color='#2196f5' icon="plus" mode="contained" onPress={() => setIsDialogVisible(true)}> Add New To Do </Button>
+            <Button  accessibilityLabel='Add' color='#2196f5' icon="plus" mode="contained" onPress={() => setIsDialogVisible(true)}> Add New To Do </Button>
           </View>
         </Portal>
 
@@ -301,7 +301,7 @@ function NowScreen({ navigation }) {
           <Dialog visible={isDialogVisibleView} onDismiss={() => [setTitleView(),setDescView(),setIsDialogVisibleView(false)]}>
             <Dialog.Title>{titleView}</Dialog.Title>
             <Dialog.Content>
-              <Paragraph>{descView}</Paragraph>
+              <Paragraph accessibilityLabel='desc'>{descView}</Paragraph>
             </Dialog.Content>
           </Dialog>
         </Portal>
@@ -311,7 +311,7 @@ function NowScreen({ navigation }) {
             <Dialog.Title>Are you sure delete?</Dialog.Title>
             <Dialog.Actions>
               <Button onPress={() => [setIsDialogVisibleDelete(false),setTodoDelete(null)]} theme={theme} >Cancel</Button>
-              <Button onPress={() => [handleDelete(todoDelete),setIsDialogVisibleDelete(false),setTodoDelete(null)]} color='red' >Delete</Button>
+              <Button accessibilityLabel='DeleteConF' onPress={() => [handleDelete(todoDelete),setIsDialogVisibleDelete(false),setTodoDelete(null)]} color='red' >Delete</Button>
             </Dialog.Actions>
           </Dialog>
         </Portal>
@@ -320,22 +320,22 @@ function NowScreen({ navigation }) {
           <Dialog visible={isDialogVisibleEdit} onDismiss={() => setIsDialogVisibleEdit(false)}>
             <Dialog.Title>EDIT TO DO</Dialog.Title>
             <Dialog.Content>
-              <TextInput label='Title' value={titleEdit} onChangeText={text => setTitleEdit(text)} mode="outlined" theme={theme} />
+              <TextInput accessibilityLabel='EditTitle' label='Title' value={titleEdit} onChangeText={text => setTitleEdit(text)} mode="outlined" theme={theme} />
             </Dialog.Content>
             <Dialog.Content>
-              <TextInput label='Detail' value={descEdit} onChangeText={text => setDescEdit(text)} mode="outlined" theme={theme} />
+              <TextInput accessibilityLabel='EditDesc' label='Detail' value={descEdit} onChangeText={text => setDescEdit(text)} mode="outlined" theme={theme} />
             </Dialog.Content>
             <Dialog.Content>
-              <Button onPress={showDatepicker} mode='outlined' color='#ff6347'> Pick Due Date </Button>
+              <Button accessibilityLabel='EditDate' onPress={showDatepicker} mode='outlined' color='#ff6347'> Pick Due Date </Button>
             </Dialog.Content>
             <Dialog.Content>
-              <Button onPress={showTimepicker} mode='outlined'color='#ff6347'> Pick Due Time </Button>
+              <Button accessibilityLabel='EditTime' onPress={showTimepicker} mode='outlined'color='#ff6347'> Pick Due Time </Button>
             </Dialog.Content>
             <Dialog.Content>
             <Text style={[styles.todotext,{textAlign: 'center',marginTop: 5, marginBottom: 5,}]}>Selected: {date.toLocaleString()}</Text>
             </Dialog.Content>
             <Dialog.Actions>
-              <Button onPress={() => [handleEdit(date.toLocaleString()),setIsDialogVisibleEdit(false)]} theme={theme}>Save Change</Button>
+              <Button accessibilityLabel='Save' onPress={() => [handleEdit(date.toLocaleString()),setIsDialogVisibleEdit(false)]} theme={theme}>Save Change</Button>
             </Dialog.Actions>
               {show && ( <DateTimePicker testID="dateTimePicker" value={date} mode={mode} is24Hour={true} onChange={onChange} /> )}
           </Dialog>
@@ -613,8 +613,8 @@ export default function App() {
           tabBarInactiveTintColor: 'gray',
           header: CustomNavigationBar,
         })}>
-        <Tab.Screen name="Now" component={NowScreen} />
-        <Tab.Screen name="Completed" component={CompletedScreen}/>
+        <Tab.Screen accessibilityLabel='NowTab' name="Now" component={NowScreen} />
+        <Tab.Screen accessibilityLabel='CompleteTab' name="Completed" component={CompletedScreen}/>
       </Tab.Navigator>
     </NavigationContainer>
   );
